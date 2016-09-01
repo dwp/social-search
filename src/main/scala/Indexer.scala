@@ -26,9 +26,9 @@ object Indexer {
     actorSystem.terminate()
   }
 
-  def main(args: Array[String]) {
+  def main(args: Array[String]) = {
     import SlackTypeImplicits._
-    val sourcedata: JsValue = Json.parse(Source.fromFile(this.getClass.getResource("/data.json").toURI).getLines().mkString)
+    val sourcedata: JsValue = Json.parse(Source.fromFile(this.getClass.getResource("/data-update.json").toURI).getLines().mkString)
     val slackTeam = Json.fromJson[SlackTeam](sourcedata).get
 
     /*esClient.deleteIndex("messages")

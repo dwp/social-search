@@ -4,10 +4,13 @@ object SlackTypeImplicits {
   implicit lazy val slackMessageReactionFormat= Json.format[SlackMessageReaction]
   implicit lazy val slackMessageFormat = Json.format[SlackMessage]
   implicit lazy val slackUserFormat = Json.format[SlackUser]
+  implicit lazy val slackChannelFormat = Json.format[SlackChannel]
   implicit lazy val slackTeamFormat = Json.format[SlackTeam]
 }
 
-case class SlackTeam(id: String, name: String, domain: String, email_domain: String, users: Seq[SlackUser])
+case class SlackTeam(id: String, name: String, domain: String, email_domain: String, channels: Seq[SlackChannel], users: Seq[SlackUser])
+
+case class SlackChannel(id: String, name: String, num_members: Int)
 
 case class SlackUser(
   id: String,

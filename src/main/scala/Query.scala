@@ -17,7 +17,7 @@ object Query {
                                 |  "query": {
                                 |    "multi_match": {
                                 |      "query": "[KEYWORDS]",
-                                |      "fields": [ "content", "concepts^10", "entities^10" ]
+                                |      "fields": [ "content", "concepts^2", "entities^2" ]
                                 |    }
                                 |  },
                                 |  "size": 0,
@@ -43,11 +43,10 @@ object Query {
   }
 
   def main(args: Array[String]) = {
-
     ask()
 
     def ask(): Unit = {
-      println("Please enter a question: ")
+      print("Please enter a question: ")
       val question = readLine
 
       // run question through topic API to extract concepts/entities
@@ -77,7 +76,7 @@ object Query {
           val parts = question.replaceAll("[.,;'\"?!()]", "").toLowerCase.split(" ").toSet
           val keywords = (parts ++ entities ++ concepts) -- stopwords
 
-          println(s"Performing query with keywords: ${keywords.mkString(" ")}")
+          println(s"Performing query with keywords: ${keywords.mkString(", ")}")
 
           esClient.search("messages", QueryTemplate.replace("[KEYWORDS]", keywords.mkString(" "))).map {
             esResponse =>
