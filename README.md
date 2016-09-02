@@ -1,6 +1,14 @@
 # Social Search - indexing and query tool
 This repository contains some rudimentary code to index Slack messages into an instance of Elastic Search, along with a CLI application that allows one to submit questions for analysis, suggesting a list of users most suited to answer the question.
 
+To run either of the tools here, `Scala`, `SBT` and `Elastic Search` are required. If running on a Mac, these are all easily installable using `homebrew`:
+
+```
+$ brew install scala sbt elasticsearch
+...
+$ elasticsearch &
+```
+
 ## Indexing
 At present, the indexing job requires an json data file, generated using the `slack-api-export` tool (which can be found in the Innovation space on Gitlab). The file contains a list of users and their messages. As part of the indexing job, each message is passed through a [third-party topic extraction API](https://www.meaningcloud.com/developer/topics-extraction) which identifies entities and concepts. These, along with the original message contents, are indexed into Elastic Search.
 
