@@ -11,21 +11,17 @@ import scala.io.StdIn.readLine
 
 object Query {
 
+  // Use a multiplier to increase scores for multiple results from a user
+  val Multiplier = 1.01
+
   val ApiKey: String = "<api_key>"
 
   val QueryTemplate: String = """{
+                                |  "size": 20,
                                 |  "query": {
                                 |    "multi_match": {
                                 |      "query": "[KEYWORDS]",
                                 |      "fields": [ "content", "concepts^2", "entities^2" ]
-                                |    }
-                                |  },
-                                |  "size": 0,
-                                |  "aggs": {
-                                |    "group_by_user": {
-                                |      "terms": {
-                                |        "field": "user_name"
-                                |      }
                                 |    }
                                 |  }
                                 |}""".stripMargin
@@ -81,9 +77,12 @@ object Query {
           esClient.search("messages", QueryTemplate.replace("[KEYWORDS]", keywords.mkString(" "))).map {
             esResponse =>
               val result = Json.parse(esResponse.getResponseBody)
-              val users: Seq[(String, Int)] = (result \\ "buckets").head.as[JsArray].value.map {
-                v => (v \ "key").as[String] -> (v \ "doc_count").as[Int]
-              }
+
+              val users: Seq[(String, Double)] = (result \\ "user_name").zip(result \\ "_score")
+                .map(kv => kv._1.as[String] -> kv._2.as[Double])
+                .groupBy(_._1)
+                .map(kv => kv._1 -> kv._2.max._2 * scala.math.pow(Multiplier, kv._2.size))
+                .toSeq.sortWith(_._2 > _._2)
 
               println("Users best suited to answer your question: ")
               users.foreach(u => println(s"${u._1} (${u._2})"))
