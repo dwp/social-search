@@ -51,8 +51,8 @@ object Indexer {
         .flatMap {
           res =>
             val json = Json.parse(res.body)
-            val entities = (json \ "entity_list" \\ "form").map(_.toString)
-            val concepts = (json \ "concept_list" \\ "form").map(_.toString)
+            val entities = (json \ "entity_list" \\ "form").map(_.as[String].toLowerCase).toSet
+            val concepts = (json \ "concept_list" \\ "form").map(_.as[String].toLowerCase).toSet
 
             println(s"Indexing message ${message.text}")
 

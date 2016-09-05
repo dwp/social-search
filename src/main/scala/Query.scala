@@ -21,7 +21,7 @@ object Query {
                                 |  "query": {
                                 |    "multi_match": {
                                 |      "query": "[KEYWORDS]",
-                                |      "fields": [ "content", "concepts^2", "entities^2" ]
+                                |      "fields": [ "content", "content.shingles^2", "concepts^2", "entities^2" ]
                                 |    }
                                 |  }
                                 |}""".stripMargin
@@ -68,9 +68,10 @@ object Query {
             println(s"Concepts identified from your question: ${concepts.mkString(", ")}")
 
           // load stopwords, tokenise the question, combine with entities and concepts, then remove stopwords
-          val stopwords = Source.fromFile(this.getClass.getResource("/stopwords").toURI).getLines().toSet
+          //val stopwords = Source.fromFile(this.getClass.getResource("/stopwords").toURI).getLines().toSet
           val parts = question.replaceAll("[.,;'\"?!()]", "").toLowerCase.split(" ").toSet
-          val keywords = (parts ++ entities ++ concepts) -- stopwords
+          //val keywords = (parts ++ entities ++ concepts) -- stopwords
+          val keywords = parts
 
           println(s"Performing query with keywords: ${keywords.mkString(", ")}")
 

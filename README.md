@@ -14,6 +14,56 @@ At present, the indexing job requires an json data file, generated using the `sl
 
 The topic extraction API requires an API key (a free key can be obtained, providing upto 40,000 requests).
 
+Before indexing, create a new index and then specify a mapping, configuring an analyser to generate [shingles](https://en.wikipedia.org/wiki/W-shingling) (word-based ngrams.
+
+```
+curl -XPUT 'http://localhost:9200/messages/' -d '{
+  "settings" : {
+    "index" : {
+      "number_of_shards" : 1
+    },
+    "analysis": {
+      "filter": {
+        "my_shingle_filter": {
+          "type": "shingle",
+          "min_shingle_size": 2,
+          "max_shingle_size": 4,
+          "output_unigrams": false
+        }
+      },
+      "analyzer": {
+        "my_shingle_analyzer": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": [
+            "lowercase",
+            "my_shingle_filter"
+          ]
+        }
+      }
+    }
+  }
+}'
+```
+
+```
+curl -XPUT 'http://localhost:9200/messages/_mapping/slack' -d '{
+  "slack": {
+    "properties": {
+      "content": {
+        "type": "string",
+        "fields": {
+          "shingles": {
+            "type": "string",
+            "analyzer": "my_shingle_analyzer"
+          }
+        }
+      }
+    }
+  }
+}'
+```
+
 To run the indexing job:
 
 ```bash
