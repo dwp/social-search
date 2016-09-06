@@ -1,5 +1,6 @@
 import akka.actor.ActorSystem
 import akka.stream.{ActorMaterializer, scaladsl}
+import com.typesafe.config.ConfigFactory
 import play.api.libs.json._
 import play.api.libs.ws.ahc.AhcWSClient
 import play.api.mvc.MultipartFormData.DataPart
@@ -18,7 +19,7 @@ object Indexer {
   implicit val materializer = ActorMaterializer()
 
   lazy val httpClient = AhcWSClient()
-  lazy val esClient = new Client(topic.getString("search.endpoint"))
+  lazy val esClient = new Client(config.getString("search.endpoint"))
 
   def terminateAll() = {
     Client.shutdown()
