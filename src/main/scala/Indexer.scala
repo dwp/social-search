@@ -12,13 +12,13 @@ import scala.util.{Failure, Success}
 
 object Indexer {
 
-  val ApiKey: String = "<api_key>"
+  val config = ConfigFactory.load();
 
   implicit val actorSystem = ActorSystem()
   implicit val materializer = ActorMaterializer()
 
   lazy val httpClient = AhcWSClient()
-  lazy val esClient = new Client("http://localhost:9200")
+  lazy val esClient = new Client(topic.getString("search.endpoint"))
 
   def terminateAll() = {
     Client.shutdown()
@@ -31,10 +31,6 @@ object Indexer {
     val sourcedata: JsValue = Json.parse(Source.fromFile(this.getClass.getResource("/data-update.json").toURI).getLines().mkString)
     val slackTeam = Json.fromJson[SlackTeam](sourcedata).get
 
-    /*esClient.deleteIndex("messages")
-    esClient.refresh("messages")
-    terminateAll()*/
-
     val futureResponses = for {
       user <- slackTeam.users.filter(u => !u.is_bot && u.name != "slackbot")
       message <- user.messages.filter(m => m.`type` == "message" && m.sub_type.isEmpty)
@@ -42,9 +38,9 @@ object Indexer {
       // argh! the concept extraction API we're using has a nasty rate limit set...
       Thread.sleep(1000)
 
-      httpClient.url("http://api.meaningcloud.com/topics-2.0")
+      httpClient.url(config.getString("topic.endpoint"))
         .post(scaladsl.Source(
-          DataPart("key", ApiKey) ::
+          DataPart("key", config.getString("topic.apikey")) ::
           DataPart("tt", "ec") ::
           DataPart("lang", "en") ::
           DataPart("txt", message.text) :: List()))

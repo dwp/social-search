@@ -1,5 +1,6 @@
 import akka.actor.ActorSystem
 import akka.stream.{ActorMaterializer, scaladsl}
+import com.typesafe.config.ConfigFactory
 import play.api.libs.json.{JsArray, Json}
 import play.api.libs.ws.ahc.AhcWSClient
 import play.api.mvc.MultipartFormData.DataPart
@@ -14,7 +15,7 @@ object Query {
   // Use a multiplier to increase scores for multiple results from a user
   val Multiplier = 1.01
 
-  val ApiKey: String = "<api_key>"
+  val config = ConfigFactory.load();
 
   val QueryTemplate: String = """{
                                 |  "size": 20,
@@ -30,7 +31,7 @@ object Query {
   implicit val materializer = ActorMaterializer()
 
   lazy val httpClient = AhcWSClient()
-  lazy val esClient = new Client("http://localhost:9200")
+  lazy val esClient = new Client(config.getString("search.endpoint"))
 
   def terminateAll() = {
     Client.shutdown()
@@ -46,9 +47,9 @@ object Query {
       val question = readLine
 
       // run question through topic API to extract concepts/entities
-      httpClient.url("http://api.meaningcloud.com/topics-2.0")
+      httpClient.url(config.getString("topic.endpoint"))
         .post(scaladsl.Source(
-          DataPart("key", ApiKey) ::
+          DataPart("key", config.getString("topic.apikey")) ::
             DataPart("tt", "ec") ::
             DataPart("lang", "en") ::
             DataPart("txt", question) :: List())).map {
@@ -67,15 +68,14 @@ object Query {
           else
             println(s"Concepts identified from your question: ${concepts.mkString(", ")}")
 
-          // load stopwords, tokenise the question, combine with entities and concepts, then remove stopwords
-          //val stopwords = Source.fromFile(this.getClass.getResource("/stopwords").toURI).getLines().toSet
-          val parts = question.replaceAll("[.,;'\"?!()]", "").toLowerCase.split(" ").toSet
-          //val keywords = (parts ++ entities ++ concepts) -- stopwords
-          val keywords = parts
+          // Note, we identify concepts above, just to determine what
+          // concepts/entities have been identified, however, these are
+          // not used in the actual query to ES. The question, as
+          // entered by the user, is submitted in the query.
 
-          println(s"Performing query with keywords: ${keywords.mkString(", ")}")
+          println("Performing query against ElasticSearch using raw input...")
 
-          esClient.search("messages", QueryTemplate.replace("[KEYWORDS]", keywords.mkString(" "))).map {
+          esClient.search("messages", QueryTemplate.replace("[KEYWORDS]", question)).map {
             esResponse =>
               val result = Json.parse(esResponse.getResponseBody)
 
