@@ -9,6 +9,8 @@ $ brew install scala sbt elasticsearch
 $ elasticsearch &
 ```
 
+Note, the application config has the default Elastic Search address of `localhost:9200`. If your instance of Elastic Search is at a different location, you will need to edit the `src/main/resources/application.conf` file accordingly. You will also need to enter the Meaning Cloud API key in the config, if you wish to extract any entities/concepts.
+
 ## Indexing
 At present, the indexing job requires an json data file, generated using the `slack-api-export` tool (which can be found in the Innovation space on Gitlab). The file contains a list of users and their messages. As part of the indexing job, each message is passed through a [third-party topic extraction API](https://www.meaningcloud.com/developer/topics-extraction) which identifies entities and concepts. These, along with the original message contents, are indexed into Elastic Search.
 
@@ -73,12 +75,30 @@ sbt "run-main Indexer"
 Note, the code assumes that Elastic Search is accessible at `localhost:9200`. The code will also need to be edited to include an API key from MeaningCloud.
 
 ## Querying
-A simple CLI tool can be run from your terminal or IDE. The tool accepts a question (or any text in fact), runs the input through the same topic extraction API used during the indexing job, performs some very basic text manipulation to remove stop words and unnecessary punctuation, and then performs a query against the Elastic Search instance to determine which users may best be able to engage in a discussion on the topics/keywords obtained from the input.
+A simple tool can be run from your terminal or IDE. It can be run as an interactive console application, or as a webservice. It accepts a question (or any text in fact) and performs a query against the Elastic Search instance to determine which users may best be able to engage in a discussion.
 
 To run the CLI query application:
+
+```bash
+sbt "run-main Query -i"
+```
+
+To run the webserver, simply omit the `-i` flag;
 
 ```bash
 sbt "run-main Query"
 ```
 
-Note, the code assumes that Elastic Search is accessible at `localhost:9200`. The code will also need to be edited to include an API key from MeaningCloud.
+Then using cURL or your web browser, perform a query using the following endpoint:
+
+```bash
+curl 'http://localhost:8080/ask?q=your question goes here'
+```
+
+Example response:
+
+```
+{
+  
+}
+```

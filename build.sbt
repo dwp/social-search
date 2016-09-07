@@ -7,6 +7,9 @@ scalaVersion := "2.11.8"
 scalacOptions ++= Seq("-feature", "-deprecation", "-unchecked")
 
 libraryDependencies ++= Seq(
+  "com.typesafe.akka" %% "akka-slf4j" % "2.4.2",
+  "com.typesafe.akka" %% "akka-http-experimental" % "2.4.2",
+  "ch.qos.logback" % "logback-classic" % "1.1.6",
   "com.typesafe.play" %% "play-json" % "2.5.5",
   "com.github.gphat" %% "wabisabi" % "2.1.7",
   "com.typesafe.play" %% "play-ws" % "2.5.6",
