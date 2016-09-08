@@ -11,7 +11,7 @@ import scala.concurrent.Future
 import scala.io.Source
 import scala.util.{Failure, Success}
 
-object Indexer {
+object BulkIndexer {
 
   val config = ConfigFactory.load();
 
