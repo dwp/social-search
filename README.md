@@ -89,16 +89,25 @@ To run the webserver, simply omit the `-i` flag;
 sbt "run-main Query"
 ```
 
-Then using cURL or your web browser, perform a query using the following endpoint:
+Then using `curl` or a web browser, perform a query using the following endpoint:
 
 ```bash
-curl 'http://localhost:8080/ask?q=your question goes here'
+curl 'http://localhost:8080/ask?q=question+goes+here'
 ```
 
 Example response:
 
 ```
 {
-  
+  "question" : "question goes here",
+  "entities" : [ ],
+  "concepts" : [ "question", "location" ],
+  "users" : [ {
+    "user_id" : "U123ABC",
+    "score" : 1.234567
+  }, {
+    "user_id" : "U456DEF",
+    "score" : 0.987654
+  }]
 }
 ```
