@@ -2,11 +2,10 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import akka.http.scaladsl.model.MediaTypes.`application/json`
-import akka.http.scaladsl.marshalling.{ Marshaller, ToEntityMarshaller }
 import akka.stream.{ActorMaterializer, scaladsl}
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
+import de.heikoseeberger.akkahttpplayjson.PlayJsonSupport
 import play.api.libs.json._
 import play.api.libs.ws.ahc.AhcWSClient
 import play.api.mvc.MultipartFormData.DataPart
@@ -22,30 +21,23 @@ case class QueryResponse(
   concepts: Set[String],
   users: Seq[(String, Double)])
 
-object Query {
+object Query extends PlayJsonSupport {
 
   val config = ConfigFactory.load();
 
   implicit val actorSystem = ActorSystem()
   implicit val materializer = ActorMaterializer()
-
   implicit val executionContext = actorSystem.dispatcher
   implicit val timeout = Timeout(10.seconds)
 
-  // automatically the sequence of user_ids -> scores into Play JSON
-  implicit val tuple2Writer = Writes[(String, Double)] {
-    t => Json.obj("user_id" -> t._1, "score" -> t._2)
-  }
-
-  // automatically convert the QueryResponse into Play JSON
-  implicit val writer = Json.writes[QueryResponse]
-
-  // Copied from Heiko Seeberger's akka-http-json helper library to marshall Play Json to JSON output
-  implicit def playJsonMarshaller[A](implicit writes: Writes[A], printer: JsValue => String = Json.prettyPrint): ToEntityMarshaller[A] =
-    Marshaller.StringMarshaller.wrap(`application/json`)(printer).compose(writes.writes)
-
   lazy val httpClient = AhcWSClient()
   lazy val esClient = new Client(config.getString("search.endpoint"))
+
+  // automatically convert a sequence of user_ids -> scores into Play JSON
+  implicit val userTupleWriter = Writes[(String, Double)](t => Json.obj("user_id" -> t._1, "score" -> t._2))
+
+  // automatically convert the QueryResponse into Play JSON
+  implicit val queryResponseWriter = Json.writes[QueryResponse]
 
   // Use a multiplier to increase scores for multiple results from a user
   val Multiplier = 1.01
@@ -66,12 +58,14 @@ object Query {
     actorSystem.terminate()
   }
 
+  /** Check that the web service is running: /ping */
   val pingRoute: Route = pathPrefix("ping") {
     get {
       complete("pong")
     }
   }
 
+  /** Submit a question to find the most appropriate users: /ask?q=question+goes+here */
   val askRoute: Route = pathPrefix("ask") {
     get {
       parameter('q) {
@@ -89,6 +83,7 @@ object Query {
     }
   }
 
+  /** Query ElasticSearch with the question to find the users best suited to answer it. */
   def bestUsers(question: String, userField: String = "user_id"): Future[Seq[(String, Double)]] = {
     esClient.search("messages", QueryTemplate.replace("[KEYWORDS]", question)).map {
       esResponse =>
@@ -101,8 +96,8 @@ object Query {
     }
   }
 
+  /** Run a question through Meaning Cloud's topic API to extract entities and concepts. */
   def extractTopics(question: String): Future[(Set[String], Set[String])] = {
-    // run question through topic API to extract concepts/entities
     httpClient.url(config.getString("topic.endpoint"))
       .post(scaladsl.Source(
         DataPart("key", config.getString("topic.apikey")) ::
@@ -118,11 +113,11 @@ object Query {
       }
   }
 
+  /** Start and maintain a running interactive query tool for console users: requires -i flag. */
   def cli(): Unit = {
     print("Please enter a question: ")
     val question = readLine
 
-    // run question through topic API to extract concepts/entities
     extractTopics(question).map {
       case (entities, concepts) =>
         if (entities.isEmpty)
