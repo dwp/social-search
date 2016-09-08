@@ -2,21 +2,25 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import akka.http.scaladsl.model.HttpEntity
 import akka.http.scaladsl.model.MediaTypes.`application/json`
+import akka.http.scaladsl.marshalling.{ Marshaller, ToEntityMarshaller }
 import akka.stream.{ActorMaterializer, scaladsl}
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
-import play.api.libs.json.{JsArray, Json}
+import play.api.libs.json._
 import play.api.libs.ws.ahc.AhcWSClient
 import play.api.mvc.MultipartFormData.DataPart
 import wabisabi.Client
 
-//import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.Future
-import scala.io.Source
 import scala.io.StdIn.readLine
+
+case class QueryResponse(
+  question: String,
+  entities: Set[String],
+  concepts: Set[String],
+  users: Seq[(String, Double)])
 
 object Query {
 
@@ -27,6 +31,18 @@ object Query {
 
   implicit val executionContext = actorSystem.dispatcher
   implicit val timeout = Timeout(10.seconds)
+
+  // automatically the sequence of user_ids -> scores into Play JSON
+  implicit val tuple2Writer = Writes[(String, Double)] {
+    t => Json.obj("user_id" -> t._1, "score" -> t._2)
+  }
+
+  // automatically convert the QueryResponse into Play JSON
+  implicit val writer = Json.writes[QueryResponse]
+
+  // Copied from Heiko Seeberger's akka-http-json helper library to marshall Play Json to JSON output
+  implicit def playJsonMarshaller[A](implicit writes: Writes[A], printer: JsValue => String = Json.prettyPrint): ToEntityMarshaller[A] =
+    Marshaller.StringMarshaller.wrap(`application/json`)(printer).compose(writes.writes)
 
   lazy val httpClient = AhcWSClient()
   lazy val esClient = new Client(config.getString("search.endpoint"))
@@ -60,17 +76,24 @@ object Query {
     get {
       parameter('q) {
         question =>
-          
-          complete(s"The question is: $question")
+          val response: Future[QueryResponse] = extractTopics(question).flatMap {
+            case (entities, concepts) =>
+              bestUsers(question).map {
+                users =>
+                  QueryResponse(question, entities, concepts, users)
+              }
+          }
+
+          onSuccess(response) { r => complete(r) }
       }
     }
   }
 
-  def bestUsers(question: String): Future[Seq[(String, Double)]] = {
+  def bestUsers(question: String, userField: String = "user_id"): Future[Seq[(String, Double)]] = {
     esClient.search("messages", QueryTemplate.replace("[KEYWORDS]", question)).map {
       esResponse =>
         val result = Json.parse(esResponse.getResponseBody)
-        (result \\ "user_name").zip(result \\ "_score")
+        (result \\ userField).zip(result \\ "_score")
           .map(kv => kv._1.as[String] -> kv._2.as[Double])
           .groupBy(_._1)
           .map(kv => kv._1 -> kv._2.max._2 * scala.math.pow(Multiplier, kv._2.size))
@@ -119,7 +142,7 @@ object Query {
 
         println("Performing query against ElasticSearch using raw input...")
 
-        bestUsers(question).map {
+        bestUsers(question, "user_name").map {
           users =>
             println("Users best suited to answer your question: ")
             users.foreach(u => println(s"${u._1} (${u._2})"))

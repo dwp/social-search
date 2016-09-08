@@ -4,7 +4,7 @@ version := "0.0.1-SNAPSHOT"
 
 scalaVersion := "2.11.8"
 
-scalacOptions ++= Seq("-feature", "-deprecation", "-unchecked")
+scalacOptions ++= Seq("-feature", "-deprecation", "-unchecked", "-Ywarn-unused-import")
 
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-slf4j" % "2.4.2",
