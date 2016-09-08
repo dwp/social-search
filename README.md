@@ -11,10 +11,10 @@ $ elasticsearch &
 
 Note, the application config has the default Elastic Search address of `localhost:9200`. If your instance of Elastic Search is at a different location, you will need to edit the `src/main/resources/application.conf` file accordingly. You will also need to enter the Meaning Cloud API key in the config, if you wish to extract any entities/concepts.
 
-## Indexing
-At present, the indexing job requires an json data file, generated using the `slack-api-export` tool (which can be found in the Innovation space on Gitlab). The file contains a list of users and their messages. As part of the indexing job, each message is passed through a [third-party topic extraction API](https://www.meaningcloud.com/developer/topics-extraction) which identifies entities and concepts. These, along with the original message contents, are indexed into Elastic Search.
+## Bulk Indexing
+The codebase contains a piece of code for indexing a large number of messages in bulk, requring a JSON data file, generated using the `slack-api-export` tool (which can be found in the Innovation space on Gitlab). The file contains a list of users and their messages. As part of the indexing job, each message is passed through a [third-party topic extraction API](https://www.meaningcloud.com/developer/topics-extraction) which identifies entities and concepts. These, along with the original message contents, are then indexed into Elastic Search.
 
-The topic extraction API requires an API key (a free key can be obtained, providing upto 40,000 requests).
+The topic extraction API requires an API key (a free key can be obtained, providing upto 40,000 requests). Once a key has been obtained, it must be added to the `src/main/resources/application.conf` file.
 
 Before indexing, create a new index and then specify a mapping, configuring an analyser to generate [shingles](https://en.wikipedia.org/wiki/W-shingling) (word-based ngrams.
 
@@ -69,24 +69,24 @@ curl -XPUT 'http://localhost:9200/messages/_mapping/slack' -d '{
 To run the indexing job:
 
 ```bash
-sbt "run-main Indexer"
+sbt "run-main BulkIndexer"
 ```
 
-Note, the code assumes that Elastic Search is accessible at `localhost:9200`. The code will also need to be edited to include an API key from MeaningCloud.
+Note: at present, the indexer is hardcoded to point at the file.
 
 ## Querying
-A simple tool can be run from your terminal or IDE. It can be run as an interactive console application, or as a webservice. It accepts a question (or any text in fact) and performs a query against the Elastic Search instance to determine which users may best be able to engage in a discussion.
+A simple webservice can be run which provides an endpoint to perform queries and also index individual messages into Elastic Search. The _query_ tool can also be run as an interactive console application. The service accepts a question (or any text in fact) and performs a query against the Elastic Search instance to determine which users may best be able to engage in a discussion.
 
 To run the CLI query application:
 
 ```bash
-sbt "run-main Query -i"
+sbt "run-main SocialSearch -i"
 ```
 
-To run the webserver, simply omit the `-i` flag;
+To run the webservice, simply omit the `-i` flag;
 
 ```bash
-sbt "run-main Query"
+sbt "run-main SocialSearch"
 ```
 
 Then using `curl` or a web browser, perform a query using the following endpoint:
