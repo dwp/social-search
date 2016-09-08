@@ -111,3 +111,34 @@ Example response:
   }]
 }
 ```
+
+## Indexing individual messages
+As noted above, the webservice also provides an endpoint to index individual messages. With the webservice running, as above:
+
+```bash
+sbt "run-main SocialSearch"
+```
+
+A message may be indexed at the `/messages` endpoint, making a POST request with a message in the following format:
+
+```json
+{
+  "id" : "ABC123456",
+  "user_id" : "U1234567",
+  "user_name": "steven",
+  "text": "YO HO HO AND A BOTTLE O RUM",
+  "timestamp": "..."
+}
+```
+
+An example curl request:
+
+```bash
+curl -XPOST -H"Content-Type: application/json" localhost:8080/messages -d '{
+  "id" : "ABC123456",
+  "user_id" : "U1234567",
+  "user_name": "steven",
+  "text": "YO HO HO AND A BOTTLE O RUM",
+  "timestamp": "..."
+}'
+```
