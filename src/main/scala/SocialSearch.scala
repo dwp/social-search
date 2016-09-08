@@ -21,7 +21,7 @@ case class QueryResponse(
   concepts: Set[String],
   users: Seq[(String, Double)])
 
-object Query extends PlayJsonSupport {
+object SocialSearch extends PlayJsonSupport {
 
   val config = ConfigFactory.load();
 
