@@ -28,9 +28,10 @@ object BulkIndexer {
   }
 
   def main(args: Array[String]) = {
-    import SlackTypeImplicits._
+    import models.slack._
+    import models.slack.Implicits._
     val sourcedata: JsValue = Json.parse(Source.fromFile(this.getClass.getResource("/data-update.json").toURI).getLines().mkString)
-    val slackTeam = Json.fromJson[SlackTeam](sourcedata).get
+    val slackTeam = Json.fromJson[Team](sourcedata).get
 
     val futureResponses = for {
       user <- slackTeam.users.filter(u => !u.is_bot && u.name != "slackbot")

@@ -1,3 +1,4 @@
+package models
 
 object SlackTypeImplicits {
   import play.api.libs.json.Json
