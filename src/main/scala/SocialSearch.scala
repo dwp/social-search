@@ -1,5 +1,6 @@
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
+import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.stream.{ActorMaterializer, scaladsl}
@@ -15,11 +16,8 @@ import scala.concurrent.duration._
 import scala.concurrent.Future
 import scala.io.StdIn.readLine
 
-case class QueryResponse(
-  question: String,
-  entities: Set[String],
-  concepts: Set[String],
-  users: Seq[(String, Double)])
+import models.QueryResponse
+import models.IndexableMessage
 
 object SocialSearch extends PlayJsonSupport {
 
@@ -32,12 +30,6 @@ object SocialSearch extends PlayJsonSupport {
 
   lazy val httpClient = AhcWSClient()
   lazy val esClient = new Client(config.getString("search.endpoint"))
-
-  // automatically convert a sequence of user_ids -> scores into Play JSON
-  implicit val userTupleWriter = Writes[(String, Double)](t => Json.obj("user_id" -> t._1, "score" -> t._2))
-
-  // automatically convert the QueryResponse into Play JSON
-  implicit val queryResponseWriter = Json.writes[QueryResponse]
 
   // Use a multiplier to increase scores for multiple results from a user
   val Multiplier = 1.01
@@ -79,6 +71,31 @@ object SocialSearch extends PlayJsonSupport {
           }
 
           onSuccess(response) { r => complete(r) }
+      }
+    }
+  }
+
+  /** Index an individual message into Elastic Search. */
+  val indexRoute: Route = pathPrefix("messages") {
+    post {
+      entity(as[IndexableMessage]) {
+        message =>
+          val futureResponse = extractTopics(message.text).flatMap {
+            case (entities, concepts) =>
+              esClient.index(
+                index = "messages",
+                `type` = "slack",
+                id = Some(message.id),
+                data = Json.obj(
+                  "content" -> message.text,
+                  "user_id" -> message.user_id,
+                  "user_name" -> message.user_name,
+                  "concepts" -> concepts,
+                  "entities" -> entities).toString)
+          }
+          onSuccess(futureResponse) {
+            r => complete(if (r.getStatusCode == 201) Created else BadRequest)
+          }
       }
     }
   }
@@ -151,7 +168,8 @@ object SocialSearch extends PlayJsonSupport {
     if (args.contains("-i"))
       cli()
     else {
-      Http().bindAndHandle(pingRoute ~ askRoute, "localhost", 8080) recover {
+      val routes = pingRoute ~ askRoute ~ indexRoute
+      Http().bindAndHandle(routes, "localhost", 8080) recover {
         case e =>
           terminateAll()
       }
