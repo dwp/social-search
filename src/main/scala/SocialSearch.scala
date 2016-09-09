@@ -14,6 +14,7 @@ import wabisabi.Client
 
 import scala.concurrent.duration._
 import scala.concurrent.Future
+import scala.io.Source
 import scala.io.StdIn.readLine
 
 import models.QueryResponse
@@ -102,7 +103,10 @@ object SocialSearch extends PlayJsonSupport {
 
   /** Query ElasticSearch with the question to find the users best suited to answer it. */
   def bestUsers(question: String, userField: String = "user_id"): Future[Seq[(String, Double)]] = {
-    esClient.search("messages", QueryTemplate.replace("[KEYWORDS]", question)).map {
+    val stopwords = Source.fromFile(this.getClass.getResource("/stopwords").toURI).getLines().toSet
+    val parts = question.replaceAll("[.,;'\"?!()]", "").toLowerCase.split(" ")
+    val keywords = parts.filter(part => !stopwords.contains(part))
+    esClient.search("messages", QueryTemplate.replace("[KEYWORDS]", keywords.mkString(" "))).map {
       esResponse =>
         val result = Json.parse(esResponse.getResponseBody)
         (result \\ userField).zip(result \\ "_score")
@@ -151,8 +155,6 @@ object SocialSearch extends PlayJsonSupport {
         // concepts/entities have been identified, however, these are
         // not used in the actual query to ES. The question, as
         // entered by the user, is submitted in the query.
-
-        println("Performing query against ElasticSearch using raw input...")
 
         bestUsers(question, "user_name").map {
           users =>

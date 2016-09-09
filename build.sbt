@@ -1,4 +1,4 @@
-name := "socialsearch-indexer"
+name := "socialsearch"
 
 version := "0.0.1-SNAPSHOT"
 
