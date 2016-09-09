@@ -103,7 +103,7 @@ object SocialSearch extends PlayJsonSupport {
 
   /** Query ElasticSearch with the question to find the users best suited to answer it. */
   def bestUsers(question: String, userField: String = "user_id"): Future[Seq[(String, Double)]] = {
-    val stopwords = Source.fromFile(this.getClass.getResource("/stopwords").toURI).getLines().toSet
+    val stopwords = Source.fromInputStream(this.getClass.getResourceAsStream("/stopwords")).getLines().toSet
     val parts = question.replaceAll("[.,;'\"?!()]", "").toLowerCase.split(" ")
     val keywords = parts.filter(part => !stopwords.contains(part))
     esClient.search("messages", QueryTemplate.replace("[KEYWORDS]", keywords.mkString(" "))).map {

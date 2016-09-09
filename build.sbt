@@ -7,11 +7,22 @@ scalaVersion := "2.11.8"
 scalacOptions ++= Seq("-feature", "-deprecation", "-unchecked", "-Ywarn-unused-import")
 
 libraryDependencies ++= Seq(
-  "com.typesafe.akka" %% "akka-slf4j" % "2.4.2",
-  "com.typesafe.akka" %% "akka-http-experimental" % "2.4.2",
-  "de.heikoseeberger" %% "akka-http-play-json" % "1.9.0",
-  "ch.qos.logback" % "logback-classic" % "1.1.6",
-  "com.typesafe.play" %% "play-json" % "2.5.5",
-  "com.github.gphat" %% "wabisabi" % "2.1.7",
+  "ch.qos.logback" % "logback-classic" % "1.1.7",
+  "com.typesafe.akka" %% "akka-slf4j" % "2.4.10",
+  "com.typesafe.akka" %% "akka-http-experimental" % "2.4.10",
+  "de.heikoseeberger" %% "akka-http-play-json" % "1.10.0",
+  "com.typesafe.play" %% "play-json" % "2.5.6",
   "com.typesafe.play" %% "play-ws" % "2.5.6",
-  "com.typesafe" % "config" % "1.3.0")
+  "com.github.gphat" %% "wabisabi" % "2.1.7")
+
+mainClass in Compile := Some("SocialSearch")
+
+mainClass in assembly := Some("SocialSearch")
+
+assemblyJarName in assembly := "socialsearch.jar"
+
+assemblyMergeStrategy in assembly := {
+  case PathList("org", "apache", "commons", xs @ _*) => MergeStrategy.first
+  case PathList(ps @ _*) if ps.mkString.contains("netty") => MergeStrategy.first
+  case x => (assemblyMergeStrategy in assembly).value(x)
+}
