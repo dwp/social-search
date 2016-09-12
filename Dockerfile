@@ -6,7 +6,7 @@ ENV PATH=${PATH}:/usr/local/sbt/bin
 RUN wget "https://dl.bintray.com/sbt/native-packages/sbt/${SBT_VERSION}/sbt-${SBT_VERSION}.tgz"
 RUN tar -xz -f sbt-${SBT_VERSION}.tgz -C /usr/local
 
-# Compile and produce a fat JAR
+# Compile the code, packaged as a jar.
 COPY . /opt/socialsearch/src
 WORKDIR /opt/socialsearch/src
 RUN sbt package
