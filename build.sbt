@@ -16,13 +16,3 @@ libraryDependencies ++= Seq(
   "com.github.gphat" %% "wabisabi" % "2.1.7")
 
 mainClass in Compile := Some("SocialSearch")
-
-mainClass in assembly := Some("SocialSearch")
-
-assemblyJarName in assembly := "socialsearch.jar"
-
-assemblyMergeStrategy in assembly := {
-  case PathList("org", "apache", "commons", xs @ _*) => MergeStrategy.first
-  case PathList(ps @ _*) if ps.mkString.contains("netty") => MergeStrategy.first
-  case x => (assemblyMergeStrategy in assembly).value(x)
-}

@@ -171,7 +171,7 @@ object SocialSearch extends PlayJsonSupport {
       cli()
     else {
       val routes = pingRoute ~ askRoute ~ indexRoute
-      Http().bindAndHandle(routes, "localhost", 8080) recover {
+      Http().bindAndHandle(routes, "0.0.0.0", 8080) recover {
         case e =>
           terminateAll()
       }
