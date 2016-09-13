@@ -7,6 +7,7 @@ import akka.stream.{ActorMaterializer, scaladsl}
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
 import de.heikoseeberger.akkahttpplayjson.PlayJsonSupport
+import org.slf4j.LoggerFactory
 import play.api.libs.json._
 import play.api.libs.ws.ahc.AhcWSClient
 import play.api.mvc.MultipartFormData.DataPart
@@ -31,6 +32,7 @@ object SocialSearch extends PlayJsonSupport {
 
   lazy val httpClient = AhcWSClient()
   lazy val esClient = new Client(config.getString("search.endpoint"))
+  lazy val logger = LoggerFactory.getLogger(this.getClass)
 
   // Use a multiplier to increase scores for multiple results from a user
   val Multiplier = 1.01
@@ -167,14 +169,39 @@ object SocialSearch extends PlayJsonSupport {
   }
 
   def main(args: Array[String]): Unit = {
-    if (args.contains("-i"))
-      cli()
-    else {
-      val routes = pingRoute ~ askRoute ~ indexRoute
-      Http().bindAndHandle(routes, "0.0.0.0", 8080) recover {
-        case e =>
+
+    val responseStatus: Future[Int] = esClient.verifyIndex("messages").flatMap {
+      response =>
+        if (response.getStatusCode == 200) {
+          Future.successful(response.getStatusCode)
+        } else {
+          esClient.createIndex("messages", Some("""{"settings":{"index":{"number_of_shards":1},"analysis":{"filter":{"my_shingle_filter":{"type":"shingle","min_shingle_size":2,"max_shingle_size":4,"output_unigrams":false}},"analyzer":{"my_shingle_analyzer":{"type":"custom","tokenizer":"standard","filter":["lowercase","my_shingle_filter"]}}}}}""")).flatMap {
+            r =>
+              if (r.getStatusCode == 200) {
+                esClient.putMapping(Seq("messages"), "slack", """{"slack":{"properties":{"content":{"type":"string","fields":{"shingles":{"type":"string","analyzer":"my_shingle_analyzer"}}}}}}""").map(_.getStatusCode)
+              } else {
+                Future.successful(r.getStatusCode)
+              }
+          }
+        }
+    }
+
+    responseStatus.map {
+      code =>
+        if (code != 200) {
+          logger.error("Unable to setup or verify that the indexes have been configured.")
           terminateAll()
-      }
+        } else {
+          if (args.contains("-i"))
+            cli()
+          else {
+            val routes = pingRoute ~ askRoute ~ indexRoute
+            Http().bindAndHandle(routes, "0.0.0.0", 8080) recover {
+              case e =>
+                terminateAll()
+            }
+          }
+        }
     }
   }
 }
