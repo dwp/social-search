@@ -16,7 +16,7 @@ The codebase contains a piece of code for indexing a large number of messages in
 
 The topic extraction API requires an API key (a free key can be obtained, providing upto 40,000 requests). Once a key has been obtained, it must be added to the `src/main/resources/application.conf` file.
 
-Before indexing, create a new index and then specify a mapping, configuring an analyser to generate [shingles](https://en.wikipedia.org/wiki/W-shingling) (word-based ngrams.
+Before indexing, create a new index and then specify a mapping, configuring an analyser to generate [shingles](https://en.wikipedia.org/wiki/W-shingling) (word-based ngrams).
 
 ```
 curl -XPUT 'http://localhost:9200/messages/' -d '{
