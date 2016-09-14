@@ -30,7 +30,7 @@ RUN sbt package
 RUN mv target/scala-2.11/*.jar /opt/socialsearch/socialsearch.jar
 RUN echo '#!/bin/bash' > /opt/socialsearch/start.sh
 RUN echo "DEPENDENCIES=$(cat target/streams/compile/dependencyClasspath/\$global/streams/export)" >> /opt/socialsearch/start.sh
-RUN echo "dockerize -wait http://${ES_HOSTNAME}:${ES_PORT} -timeout 10s && \\" >> /opt/socialsearch/start.sh
+RUN echo "dockerize -wait http://${ES_HOSTNAME}:${ES_PORT} -timeout 60s && \\" >> /opt/socialsearch/start.sh
 RUN echo 'java -cp /opt/socialsearch/socialsearch.jar:${DEPENDENCIES} SocialSearch' >> /opt/socialsearch/start.sh
 RUN chmod u+x /opt/socialsearch/start.sh
 RUN rm -rf /opt/socialsearch/src
