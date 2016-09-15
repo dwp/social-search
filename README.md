@@ -142,3 +142,22 @@ curl -XPOST -H"Content-Type: application/json" localhost:8080/messages -d '{
   "timestamp": "..."
 }'
 ```
+
+## Using Docker
+The project also comes with a Docker configuration file that will allow users to compile and run the code without having to install and setup a Scala and SBT build environment. Several build arguments can be passed when building the image, in order to ensure the correct configuration details are compiled into the project (the image simply updates the `application.conf` file).
+
+One can manually build the image, or make use of the `social-search-platform` project containing a Docker compose definition, which will download and run all of the relevant projects needed to have an end-to-end working version of Knowbot.
+
+To build this image directly, clone this project and then - inside the project root - run the following:
+
+```bash
+docker build --build-arg MC_API_KEY=xxx --build-arg ES_HOSTNAME=xxx --build-arg=ES_PORT=9200 -t social-search .
+```
+
+Be sure to change the build arguments to reflect the correct values for your Meaning Cloud API key, and the hostname and port needed to access Elastic Search. Note, if Elastic Search is running on the host machine, you will need that machine's IP address, and not localhost (as setting localhost will instruct the application to look for Elastic Search on its own running container).
+
+Once the build has completed, the image can be started by running:
+
+```bash
+docker run -it --rm social-search
+```
