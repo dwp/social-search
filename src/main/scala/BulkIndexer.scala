@@ -56,7 +56,7 @@ object BulkIndexer {
 
             esClient.index(
               index = "messages",
-              `type` = "slack",
+              `type` = slackTeam.id,
               id = Some(message.id),
               data = Json.obj(
                 "content" -> message.text,
