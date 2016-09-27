@@ -63,11 +63,11 @@ object SocialSearch extends PlayJsonSupport {
   /** Submit a question to find the most appropriate users: /ask?q=question+goes+here */
   val askRoute: Route = pathPrefix("ask") {
     get {
-      parameter('q) {
-        question =>
+      parameters('q, 'team.?) {
+        (question, team) =>
           val response: Future[QueryResponse] = extractTopics(question).flatMap {
             case (entities, concepts) =>
-              bestUsers(question).map {
+              bestUsers(question, team).map {
                 users =>
                   QueryResponse(question, entities, concepts, users)
               }
@@ -79,36 +79,38 @@ object SocialSearch extends PlayJsonSupport {
   }
 
   /** Index an individual message into Elastic Search. */
-  val indexRoute: Route = pathPrefix("messages") {
-    post {
-      entity(as[IndexableMessage]) {
-        message =>
-          val futureResponse = extractTopics(message.text).flatMap {
-            case (entities, concepts) =>
-              esClient.index(
-                index = "messages",
-                `type` = "slack",
-                id = Some(message.id),
-                data = Json.obj(
-                  "content" -> message.text,
-                  "user_id" -> message.user_id,
-                  "user_name" -> message.user_name,
-                  "concepts" -> concepts,
-                  "entities" -> entities).toString)
-          }
-          onSuccess(futureResponse) {
-            r => complete(if (r.getStatusCode == 201) Created else BadRequest)
-          }
+  val indexRoute: Route = pathPrefix("messages" / Segment) {
+    team =>
+      post {
+        entity(as[IndexableMessage]) {
+          message =>
+            val futureResponse = extractTopics(message.text).flatMap {
+              case (entities, concepts) =>
+                logger.info(s"Attempting to index document from slack team '$team'")
+                esClient.index(
+                  index = "messages",
+                  `type` = team,
+                  id = Some(message.id),
+                  data = Json.obj(
+                    "content" -> message.text,
+                    "user_id" -> message.user_id,
+                    "user_name" -> message.user_name,
+                    "concepts" -> concepts,
+                    "entities" -> entities).toString)
+            }
+            onSuccess(futureResponse) {
+              r => complete(if (r.getStatusCode == 201) Created else BadRequest)
+            }
+        }
       }
-    }
   }
 
   /** Query ElasticSearch with the question to find the users best suited to answer it. */
-  def bestUsers(question: String, userField: String = "user_id"): Future[Seq[(String, Double)]] = {
+  def bestUsers(question: String, team: Option[String] = None, userField: String = "user_id"): Future[Seq[(String, Double)]] = {
     val stopwords = Source.fromInputStream(this.getClass.getResourceAsStream("/stopwords")).getLines().toSet
     val parts = question.replaceAll("[.,;'\"?!()]", "").toLowerCase.split(" ")
     val keywords = parts.filter(part => !stopwords.contains(part))
-    esClient.search("messages", QueryTemplate.replace("[KEYWORDS]", keywords.mkString(" "))).map {
+    esClient.search(index = "messages", `type` = team, query = QueryTemplate.replace("[KEYWORDS]", keywords.mkString(" "))).map {
       esResponse =>
         val result = Json.parse(esResponse.getResponseBody)
         (result \\ userField).zip(result \\ "_score")
@@ -138,6 +140,9 @@ object SocialSearch extends PlayJsonSupport {
 
   /** Start and maintain a running interactive query tool for console users: requires -i flag. */
   def cli(): Unit = {
+    print("Please enter the team to limit searches to (leave blank to search all teams): ")
+    var team = Option(readLine)
+
     print("Please enter a question: ")
     val question = readLine
 
@@ -158,7 +163,7 @@ object SocialSearch extends PlayJsonSupport {
         // not used in the actual query to ES. The question, as
         // entered by the user, is submitted in the query.
 
-        bestUsers(question, "user_name").map {
+        bestUsers(question, team, "user_name").map {
           users =>
             println("Users best suited to answer your question: ")
             users.foreach(u => println(s"${u._1} (${u._2})"))
