@@ -79,30 +79,29 @@ object SocialSearch extends PlayJsonSupport {
   }
 
   /** Index an individual message into Elastic Search. */
-  val indexRoute: Route = pathPrefix("messages" / Segment) {
-    team =>
-      post {
-        entity(as[IndexableMessage]) {
-          message =>
-            val futureResponse = extractTopics(message.text).flatMap {
-              case (entities, concepts) =>
-                logger.info(s"Attempting to index document from slack team '$team'")
-                esClient.index(
-                  index = "messages",
-                  `type` = team,
-                  id = Some(message.id),
-                  data = Json.obj(
-                    "content" -> message.text,
-                    "user_id" -> message.user_id,
-                    "user_name" -> message.user_name,
-                    "concepts" -> concepts,
-                    "entities" -> entities).toString)
-            }
-            onSuccess(futureResponse) {
-              r => complete(if (r.getStatusCode == 201) Created else BadRequest)
-            }
-        }
+  val indexRoute: Route = pathPrefix("messages") {
+    post {
+      entity(as[IndexableMessage]) {
+        message =>
+          val futureResponse = extractTopics(message.text).flatMap {
+            case (entities, concepts) =>
+              logger.info(s"Attempting to index document from slack team '${message.team}'")
+              esClient.index(
+                index = "messages",
+                `type` = message.team,
+                id = Some(message.id),
+                data = Json.obj(
+                  "content" -> message.text,
+                  "user_id" -> message.user_id,
+                  "user_name" -> message.user_name,
+                  "concepts" -> concepts,
+                  "entities" -> entities).toString)
+          }
+          onSuccess(futureResponse) {
+            r => complete(if (r.getStatusCode == 201) Created else BadRequest)
+          }
       }
+    }
   }
 
   /** Query ElasticSearch with the question to find the users best suited to answer it. */

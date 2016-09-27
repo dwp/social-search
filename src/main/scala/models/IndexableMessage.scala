@@ -5,7 +5,8 @@ case class IndexableMessage(
   timestamp: String,
   text: String,
   user_id: String,
-  user_name: String)
+  user_name: String,
+  team: String)
 
 object IndexableMessage {
   import play.api.libs.json.Json
